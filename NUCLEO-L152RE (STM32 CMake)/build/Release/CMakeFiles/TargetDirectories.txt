@@ -1,0 +1,7 @@
+/media/majg__/HDD_FILES/PROJEKTY/ACTIVE-LOAD/2025-Active-Load/NUCLEO-L152RE (STM32 CMake)/build/Release/CMakeFiles/active-load.dir
+/media/majg__/HDD_FILES/PROJEKTY/ACTIVE-LOAD/2025-Active-Load/NUCLEO-L152RE (STM32 CMake)/build/Release/CMakeFiles/edit_cache.dir
+/media/majg__/HDD_FILES/PROJEKTY/ACTIVE-LOAD/2025-Active-Load/NUCLEO-L152RE (STM32 CMake)/build/Release/CMakeFiles/rebuild_cache.dir
+/media/majg__/HDD_FILES/PROJEKTY/ACTIVE-LOAD/2025-Active-Load/NUCLEO-L152RE (STM32 CMake)/build/Release/cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir
+/media/majg__/HDD_FILES/PROJEKTY/ACTIVE-LOAD/2025-Active-Load/NUCLEO-L152RE (STM32 CMake)/build/Release/cmake/stm32cubemx/CMakeFiles/FatFs.dir
+/media/majg__/HDD_FILES/PROJEKTY/ACTIVE-LOAD/2025-Active-Load/NUCLEO-L152RE (STM32 CMake)/build/Release/cmake/stm32cubemx/CMakeFiles/edit_cache.dir
+/media/majg__/HDD_FILES/PROJEKTY/ACTIVE-LOAD/2025-Active-Load/NUCLEO-L152RE (STM32 CMake)/build/Release/cmake/stm32cubemx/CMakeFiles/rebuild_cache.dir

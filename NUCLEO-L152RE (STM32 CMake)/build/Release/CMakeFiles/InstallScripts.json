@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"/media/majg__/HDD_FILES/PROJEKTY/ACTIVE-LOAD/2025-Active-Load/NUCLEO-L152RE (STM32 CMake)/build/Release/cmake_install.cmake",
+		"/media/majg__/HDD_FILES/PROJEKTY/ACTIVE-LOAD/2025-Active-Load/NUCLEO-L152RE (STM32 CMake)/build/Release/cmake/stm32cubemx/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
