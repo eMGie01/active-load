@@ -150,16 +150,13 @@ Firmware is written in C (STM32CubeIDE + HAL) with a **modular design**.
   - Startup configuration:
     - default mode, default limits, logging options.
   - Main control loop:
-    - orchestrates UI, logging, stop conditions, PC comms.
 
 - **Data structure module – `mystruct.c/.h`**
   - Single **global data model** holding:
-    - measurements: U, I, P, R, charge, temperatures,
     - configuration: mode, setpoints, limits, logging flags,
     - device state: ON/OFF, errors, which stop condition triggered.
   - Provides setter/getter‑like access:
     - used by firmware and PC app to stay in sync.
-
 - **Regulator module – `regulator.c/.h`**
   - Contains **PID controller** + **temperature compensation** logic.
   - Called periodically from a timer interrupt:
@@ -168,14 +165,12 @@ Firmware is written in C (STM32CubeIDE + HAL) with a **modular design**.
     - applies temperature compensation (lookup / interpolation),
     - writes resulting DAC code to control MOSFET gate.
 
-- **Interface (UI) module – `interface.c/.h`**
   - Implements LCD screens and encoder/button navigation.
   - Handles:
     - main view (live data),
     - turning load ON/OFF,
     - selecting mode (CC/CR/CP),
     - toggling logging and some configuration parameters.
-  - Keeps UI logic separate from measurement & control code.
 
 - **PC communication module – `komunikacjaPC2.c/.h`**
   - Implements protocol over UART:
@@ -187,7 +182,6 @@ Firmware is written in C (STM32CubeIDE + HAL) with a **modular design**.
     - receiving updated configuration from PC.
   - Uses **circular buffer** and state machine to handle frames robustly.
 
-- **Measurement & peripherals**
   - `sd.c/.h` – SD card + FatFS integration, CSV logging.
   - `rtc.c/.h` – timekeeping and timestamps for logs.
   - `spi.c/.h` – SPI configuration for ADCs, DAC, SD.
@@ -197,7 +191,6 @@ Firmware is written in C (STM32CubeIDE + HAL) with a **modular design**.
 
 - **Support / HAL**
   - `stm32l1xx_hal_msp.c`, `stm32l1xx_it.c`, `system_stm32l1xx.c`, `syscalls.c`, `sysmem.c`, `stm32l1xx_hal_conf.h` – standard HAL support and interrupt handlers.
-
 ---
 
 ## Control & Runtime Behaviour
@@ -208,21 +201,16 @@ Firmware is written in C (STM32CubeIDE + HAL) with a **modular design**.
    - Data structure loaded with defaults (mode, limits, logging off).
 
 2. **Idle / Configuration**
-   - User interacts via front panel:
      - selects mode (CC/CR/CP),
      - sets desired current, resistance or power,
      - configures stop criteria and logging,
      - enables/disables the load.
    - Alternatively, configuration is sent from the PC application over UART.
 
-3. **Active Discharge**
    - When the load is **ON**:
      - Timer‑based routine periodically:
        - reads new ADC samples (U, I),
-       - computes P and R,
-       - updates discharged charge,
        - reads temperatures (DS18B20),
-       - calls PID + temp compensation to update DAC (MOSFET gate).
      - Main loop:
        - checks stop conditions (Vmin, Tmax, Qmax, tmax),
        - writes data samples to SD if logging is enabled,

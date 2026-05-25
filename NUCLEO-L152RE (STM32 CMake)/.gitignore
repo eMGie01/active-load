@@ -1,0 +1,49 @@
+.settings
+.vscode
+./build
+PROJEKT_PLAN.md
+
+# Build artifacts
+/build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+build.ninja
+Makefile
+compile_commands.json
+
+# Object and binary files
+*.o
+*.obj
+*.elf
+*.axf
+*.bin
+*.hex
+*.map
+*.lst
+*.out
+*.d
+
+# IDE / editor
+.vscode/
+.idea/
+.project
+.cproject
+.settings/
+.vs/
+*.launch
+*.ioc.user
+
+# User and OS files
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Build folders
+Debug/
+Release/
+
+# Logs
+*.log
+
