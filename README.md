@@ -23,29 +23,6 @@ The system integrates:
 
 ---
 
-## Quick build (CMake)
-
-Build the refactored CMake-based firmware located in the `NUCLEO-L152RE (STM32 CMake)` folder. Example using the bundled toolchain file and Ninja:
-
-```bash
-cd "NUCLEO-L152RE (STM32 CMake)"
-mkdir -p build/Release && cd build/Release
-cmake -S ../.. -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=../cmake/gcc-arm-none-eabi.cmake
-cmake --build . --config Release
-```
-
-Or use CMake presets defined in `CMakePresets.json`:
-
-```bash
-cd "NUCLEO-L152RE (STM32 CMake)"
-cmake --preset <preset-name>
-cmake --build --preset <preset-name>
-```
-
-Replace `<preset-name>` with an available preset (e.g. `release`).
-
----
-
 ## Project Overview
 
 The device acts as a **smart load** for 12 V batteries:
@@ -163,59 +140,102 @@ Full schematics and PCB layout are documented in the thesis (`msc_thesis.pdf`).
 
 ---
 
-## Firmware Architecture (STM32, CMake)
+## Firmware Architecture (STM32, CMake-based Refactor)
 
-Firmware is written in C, structured for the refactored CMake-based build system and using the STM32 HAL. The codebase follows a **modular design** focused on portability, testability and clear separation between measurement, control and UI.
+Firmware is written in C, organized with a **modular, feature-driven design** using CMake for cross-platform builds. The refactored codebase separates concerns into independent modules (under `Modules/`) with clear boundaries, and HAL-level initialization in `Core/`.
 
-### Core Modules (conceptually)
+### Project Structure
 
-- **`main.c` / `main.h`**
-  - System initialization:
-    - clocks, GPIO, SPI, UART, TIM, RTC, SD, ADCs, DAC.
-  - Startup configuration:
-    - default mode, default limits, logging options.
-  - Main control loop:
+```
+NUCLEO-L152RE (STM32 CMake)/
+├── Core/
+│   ├── Inc/          # HAL headers (gpio.h, rtc.h, spi.h, tim.h, usart.h)
+│   └── Src/          # HAL init and interrupt handlers
+│       ├── main.c              # System init and main control loop
+│       ├── gpio.c, spi.c       # GPIO and SPI initialization
+│       ├── rtc.c, tim.c        # RTC and timer setup
+│       ├── usart.c             # UART setup for PC comms
+│       └── stm32l1xx_*.c       # STM32 HAL support files
+├── Modules/          # Feature modules (reusable, independent)
+│   ├── app/          # Application orchestration
+│   ├── state/        # Global application state
+│   ├── measurement/  # ADC, voltage, current, temperature
+│   ├── control/      # Regulator (PID), load output, safety
+│   ├── ui/           # LCD interface
+│   ├── comms/        # PC communication over UART
+│   ├── logger/       # SD card and UART logging
+│   ├── storage/      # Configuration persistence
+│   └── param_table/  # Parameter table and lookup tables
+├── AdDrivers/        # Analog/ADC driver libraries
+│   ├── MCP3561/      # 24-bit ADC driver (voltage, current)
+│   └── DAC8830/      # DAC driver (MOSFET gate control)
+├── FATFS/            # SD card file system
+└── CMakeLists.txt    # CMake build configuration
+```
 
-- **Data structure module – `mystruct.c/.h`**
-  - Single **global data model** holding:
+### Core Modules (by function)
+
+- **Application layer – `app/` module**
+  - `app_init.c/.h` – main control loop orchestration
+  - Manages state machine: initialization → idle → active discharge → stop/logging
+
+- **State management – `state/` module**
+  - `app_state.c/.h` – single **global data model** (app_state_t structure)
+  - Holds:
+    - measurements: U, I, P, R, discharge, temperatures,
     - configuration: mode, setpoints, limits, logging flags,
-    - device state: ON/OFF, errors, which stop condition triggered.
-  - Provides setter/getter‑like access:
-    - used by firmware and PC app to stay in sync.
-- **Regulator module – `regulator.c/.h`**
-  - Contains **PID controller** + **temperature compensation** logic.
-  - Called periodically from a timer interrupt:
-    - reads current measurements from data structure,
-    - computes new control value (desired current),
-    - applies temperature compensation (lookup / interpolation),
-    - writes resulting DAC code to control MOSFET gate.
+    - device status: ON/OFF, errors, stop reason.
+  - Accessed by all modules; provides clear data coupling point.
 
-  - Implements LCD screens and encoder/button navigation.
-  - Handles:
-    - main view (live data),
-    - turning load ON/OFF,
-    - selecting mode (CC/CR/CP),
-    - toggling logging and some configuration parameters.
+- **Measurement – `measurement/` module**
+  - `measurement.c/.h` – coordinate and update all measurements
+  - `adc_voltage_config.c` – voltage ADC (MCP3561) initialization
+  - `adc_current_config.c` – current ADC (MCP3561) initialization
+  - `temp_sensor.c/.h` – DS18B20 temperature reading
 
-- **PC communication module – `komunikacjaPC2.c/.h`**
-  - Implements protocol over UART:
-    - framing (header, length),
-    - payload encoding/decoding (floats, ints, enums),
-    - checksum.
-  - Supports:
-    - sending measurement snapshot and status,
-    - receiving updated configuration from PC.
-  - Uses **circular buffer** and state machine to handle frames robustly.
+- **Control – `control/` module**
+  - `regulator.c/.h` – **PID controller** + **temperature compensation**
+    - called periodically from timer,
+    - reads setpoint and measurements from app_state,
+    - applies lookup‑based Vgs(I,T) compensation,
+    - computes DAC output to control MOSFET gate.
+  - `load_output.c/.h` – DAC output and gate drive management
+  - `safety.c/.h` – safety checks and stop conditions
+    - enforces Vmin, Tmax, Qmax, tmax thresholds,
+    - graceful shutdown on fault.
 
-  - `sd.c/.h` – SD card + FatFS integration, CSV logging.
-  - `rtc.c/.h` – timekeeping and timestamps for logs.
-  - `spi.c/.h` – SPI configuration for ADCs, DAC, SD.
-  - `usart.c/.h` – UART configuration for PC comm.
-  - `tim.c/.h` – timers for control loop and time base.
-  - `gpio.c/.h` – pin configuration (MOSFET drive, fan, UI, etc.).
+- **UI – `ui/` module**
+  - `lcd_ui.c/.h` – LCD (2×16) screen rendering and encoder/button handling
+  - Supports mode selection (CC/CR/CP), load ON/OFF, logging configuration
+  - Real-time display of measurements and device state.
 
-- **Support / HAL**
-  - `stm32l1xx_hal_msp.c`, `stm32l1xx_it.c`, `system_stm32l1xx.c`, `syscalls.c`, `sysmem.c`, `stm32l1xx_hal_conf.h` – standard HAL support and interrupt handlers.
+- **PC Communication – `comms/` module**
+  - `comms_pc.c/.h` – UART protocol over USB‑UART bridge
+  - Handles framing, payload encoding/decoding, checksum
+  - Bidirectional: sends status/measurements, receives configuration
+
+- **Data logging – `logger/` module**
+  - `logger.h` – logging interface
+  - `logger_sd.c/.h` – SD card logging (FatFS, CSV format)
+    - timestamps (RTC), mode, setpoints, U, I, P, R, temperatures, DAC output, charge
+  - `logger_uart.c` – optional UART logging for debug
+
+- **Configuration storage – `storage/` module**
+  - `config_store.c/.h` – persist configuration to device flash or SD
+
+- **Parameter tables – `param_table/` module**
+  - `param_table.c/.h` – lookup tables for temperature compensation
+    - precomputed Vgs(I, T) characteristic for MOSFET
+    - loaded at startup, interpolated in real time by regulator
+
+- **Hardware drivers – `AdDrivers/`**
+  - `MCP3561/` – 24‑bit ADC SPI driver (voltage and current channels)
+  - `DAC8830/` – 8‑bit DAC SPI driver (MOSFET gate PWM control)
+
+- **HAL and support – `Core/`**
+  - `main.c` – STM32 initialization, main loop, event dispatcher
+  - `gpio.c`, `spi.c`, `tim.c`, `rtc.c`, `usart.c` – peripheral setup
+  - `stm32l1xx_hal_*.c` – standard STM32CubeHAL support and interrupt handlers
 ---
 
 ## Control & Runtime Behaviour
@@ -226,16 +246,21 @@ Firmware is written in C, structured for the refactored CMake-based build system
    - Data structure loaded with defaults (mode, limits, logging off).
 
 2. **Idle / Configuration**
+   - User interacts via front panel:
      - selects mode (CC/CR/CP),
-     - sets desired current, resistance or power,
+     - sets desired current, resistance, or power,
      - configures stop criteria and logging,
      - enables/disables the load.
    - Alternatively, configuration is sent from the PC application over UART.
 
+3. **Active Discharge**
    - When the load is **ON**:
      - Timer‑based routine periodically:
        - reads new ADC samples (U, I),
+       - computes P and R,
+       - updates discharged charge,
        - reads temperatures (DS18B20),
+       - calls PID + temperature compensation to update DAC.
      - Main loop:
        - checks stop conditions (Vmin, Tmax, Qmax, tmax),
        - writes data samples to SD if logging is enabled,
@@ -320,15 +345,17 @@ This was my **Master’s thesis**, and I was responsible for the full stack:
   - component selection (MOSFET, ADCs, DAC, references, sensors),
   - mechanical integration (heatsink, fan, enclosure, front panel).
 
-- **Firmware (STM32)**
-  - designing overall architecture and module boundaries,
-  - implementing:
-    - PID controller and temperature compensation (`regulator`),
-    - data structure module (`mystruct`),
-    - PC communication (`komunikacjaPC2`),
-    - UI (`interface`),
-    - SD logging (`sd`),
-    - temperature sensing, measurement, and safety logic.
+- **Firmware (STM32, CMake-based refactor)**
+  - designing modular architecture with feature-driven organization,
+  - implementing core modules:
+    - **`state/`** – global application state (`app_state_t`),
+    - **`control/`** – PID regulator, temperature compensation, safety,
+    - **`measurement/`** – ADC drivers (MCP3561) and temperature sensing,
+    - **`ui/`** – LCD interface and user input handling,
+    - **`comms/`** – PC UART protocol,
+    - **`logger/`** – SD card CSV logging,
+    - **`storage/`** – persistent configuration,
+    - **`app/`** – main application orchestration.
 
 - **PC Application**
   - C# desktop app:
