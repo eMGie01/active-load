@@ -1,3 +1,5 @@
+**NOTE: The folder `NUCLEO-L152RE (STM32)` contains the legacy, pre-refactor firmware (non-CMake) and is considered obsolete.**
+
 # Programmable Active Load for 12 V Batteries (Master’s Thesis)
 
 A full **hardware + firmware** project: a **programmable active electronic load** for testing 12 V batteries.  
@@ -18,6 +20,29 @@ The system integrates:
 - front‑panel user interface (LCD + encoder + button),
 - **SD card logging** (CSV),
 - and a **PC application** for remote configuration and monitoring over UART.
+
+---
+
+## Quick build (CMake)
+
+Build the refactored CMake-based firmware located in the `NUCLEO-L152RE (STM32 CMake)` folder. Example using the bundled toolchain file and Ninja:
+
+```bash
+cd "NUCLEO-L152RE (STM32 CMake)"
+mkdir -p build/Release && cd build/Release
+cmake -S ../.. -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=../cmake/gcc-arm-none-eabi.cmake
+cmake --build . --config Release
+```
+
+Or use CMake presets defined in `CMakePresets.json`:
+
+```bash
+cd "NUCLEO-L152RE (STM32 CMake)"
+cmake --preset <preset-name>
+cmake --build --preset <preset-name>
+```
+
+Replace `<preset-name>` with an available preset (e.g. `release`).
 
 ---
 
@@ -138,9 +163,9 @@ Full schematics and PCB layout are documented in the thesis (`msc_thesis.pdf`).
 
 ---
 
-## Firmware Architecture (STM32)
+## Firmware Architecture (STM32, CMake)
 
-Firmware is written in C (STM32CubeIDE + HAL) with a **modular design**.
+Firmware is written in C, structured for the refactored CMake-based build system and using the STM32 HAL. The codebase follows a **modular design** focused on portability, testability and clear separation between measurement, control and UI.
 
 ### Core Modules (conceptually)
 
